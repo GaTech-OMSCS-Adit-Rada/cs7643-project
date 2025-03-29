@@ -9,3 +9,4 @@ dependencies:
   - jupyter
   - pytest
   - tqdm
+  - pandas

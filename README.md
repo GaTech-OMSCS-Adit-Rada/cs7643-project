@@ -7,6 +7,12 @@ Date: April 2025
 
 2) `conda activate cs7643-project`
 
-3) `pip3 install torch torchvision torchaudio`
+3)
+
+```
+pip3 install torch torchvision torchaudio
+
+pip3 install tiktoken
+```
 
 
