@@ -35,24 +35,45 @@ Ep 1 (Step 005975): Train loss 1.105, Val loss 1.519 Train perplexity 3.020, Val
 
 Training completed in 12.76 minutes on A100
 
-* run_2
+* **run_2**
 - Training completed in 21.19 minutes on A100
 - Overfitting observed after 0.5 epoch
 
-* run_3:
+* **run_3**:
 - Training completed in 34.16 minutes on A100.
 - Overfitting observed after 0.5 epoch
 
-* run_4
+* **run_4**
 - Training completed in 22.05 minutes.
 - No overfitting happened, learning schedule helps!
 - The model even got french translation correct!
 
-* run_5
+* **run_5**
 - Training completed in 13.37 minutes on A100
 - Unlike run_4, this didnt get the french translation proving that you need a larger model to learn translations.
 
-* run_6
+- run_4 (L) vs run_5 (M) comparison.
+    - Overview: They both make same kind of mistakes, suggesting there is only so much you can do with size, you also need better pretrained models.
+        - Large does perform better in some scenarios.
+    - Examples:
+        - **L**: Le restaurant est le plus proche.. M: Le caf\u00e9 de la caf\u00e9. | Perhaps due to model size, emergent abilites of multi language.
+        - "Convert to passive voice". **L**: The project was approved by the manager. M: The manager approved the project.
+        - "What is the contraction for \"will not\"?". L: The contraction for \"will not\" is \"will not\". M: The contraction for \"will not\" is \"will not\".
+        - "Provide a synonym for 'bright'." L: Bright is a synonym for 'bright' M: Bright.
+        - "List two antonyms for 'intelligent.'". L: 'dumb' and 'dumb'. M: 'intelligent' and 'intelligent'.
+            - Just like L understood concept of passive voice, it also understood concept of antonym. But it also didn't have enough knowledge after dumb.
+            - This also suggests, instruction fine tuning taught it they style but not knowledege (as stupid was target but L didn't learn it). Which firther suggests, that
+            LLM has to see the same concept in several ways to learn it.
+        - What is the state capital of California?. L: Los Angeles. M: San Francisco.
+            - This is surprising that L got it wrong given that M-lora got it right. One hypothesis is that it is due to catastrophic forgetting and Lora preserves orginal weights.
+            However, I tried to give the start to M, L raw and they both returned Los Angeles. So probably not catastrophic forgetting and possibly lora finetuning instilled knowledege.
+            - Gemini convo regarding this: https://g.co/gemini/share/e334be117bac
+            - As another example, "Name two common sports indigienous to North America". Both M, L said soccer, basketball. But only M-lora got it right with football and basketball.
+        - Both still seem to struggle with complex open ended questions like "Develop a public relations plan for a new fashion brand.", "List the functions of a news manager in a newspaper"
+            - The output is incoherent. This may be due to the undelrying base model being poor too.
+        - But they do okay/and similar on simple open ended questions like compose a tweet.
+
+* **run_6**
 - With gradient clipping removed. Seems like there is slight overfitting based on the increase in gaps btw. train and val loss from curves.
 - The gemini eval is higher than no learning schedule but lower than learning_schedule+clipping. This suggests that clipping is important.
 - With A100, 38.5/40 GB used, so can't increase batch size.
@@ -69,6 +90,8 @@ Notes:
     - French translation only produced for XL.
 
 * Evals are hard.
+    - For run 4 and 5, both answered the first question with "Friend", but got diff scores: 70 and 100.
+    - Eg run19, 20. Perplexity went down but Gemini eval was worse. So hard to know what to optimize for hparam search.
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -92,7 +115,22 @@ Learning rate schedule
 |  run_17  | M-(355M) |    4   |   1    |adw| 3e-5  | 1e-5 |   0  | 0.1  |  64  |  64 | 1.560 |  4.760  |  31.53     |T4(20.70)|
 |  run_18  | M-(355M) |    4   |   1    |adw| 1e-4  | 1e-5 |   0  | 0.1  |  64  |  64 | 3.974 |  53.202 |  -----     |T4(20.70)|
 |----------|----------|--------|--------|---|-------|------|------|------|------|-----|-------|---------|------------|---------|
-|  run_19  | M-(355M) |    4   |   2    |adw|0.00005| 1e-5 |  0.2 | 0.1  |  16  |  16 | 1.378 |  3.967  |  36.35     |T4(19.19)|
+n_epochs
+|**run_19**| M-(355M) |    4   |   2    |adw|0.00005| 1e-5 |  0.2 | 0.1  |  16  |  16 | 1.371 |  3.967  | 36.35/38.10|T4(40.00)|
+|----------|----------|--------|--------|---|-------|------|------|------|------|-----|-------|---------|------------|---------|
+Learning rate schedule
+|  run_20  | M-(355M) |    4   |   2    |adw|0.00005| 1e-6 |  0.2 | 0.1  |  16  |  16 | 1.372 |  3.942  |  33.26     |T4(40.00)|
+|----------|----------|--------|--------|---|-------|------|------|------|------|-----|-------|---------|------------|---------|
+warmup
+|  run_21  | M-(355M) |    4   |   1    |adw|0.00005| 1e-5 |  0.01| 0.1  |  16  |  16 | 1.374 |  3.949  |  31.26     |T4(19.19)|
+|  run_22  | M-(355M) |    4   |   1    |adw|0.00005| 1e-5 |  0.05| 0.1  |  16  |  16 | 1.381 |  3.977  |  27.16     |T4(19.19)|
+|  run_23  | M-(355M) |    4   |   1    |adw|0.00005| 1e-5 |  0.1 | 0.1  |  16  |  16 | 1.377 |  3.963  |  29.70     |T4(19.19)|
+|----------|----------|--------|--------|---|-------|------|------|------|------|-----|-------|---------|------------|---------|
+rank again
+|  run_24  | M-(355M) |    4   |   2    |adw|0.00005| 1e-5 |  0.2 | 0.2  |  8   |  8  | 1.365 |  3.916  |  27.56     |T4(37.40)|
+|  run_25  | M-(355M) |    4   |   2    |adw|0.00005| 1e-5 |  0.2 | 0.2  |  4   |  4  | 1.381 |  3.980  |  27.10     |T4(37.40)|
+|  run_26  | M-(355M) |    4   |   2    |adw|0.00005| 1e-5 |  0.2 | 0.2  |  2   |  2  | 1.413 |  4.107  |  19.92     |T4(37.40)|
+|  run_27  | M-(355M) |    4   |   2    |adw|0.00005| 1e-5 |  0.2 | 0.2  |  32  |  32 | 1.418 |  4.130  |       |T4(37.40)|
 
 
 * **run_10**
@@ -149,7 +187,49 @@ Learning rate schedule
 * **run_19**
 - It seems like I have pulled all the juice out of lora for medium. Despite the perpleixty and loss falling, the generations are pretty similar to run_12.
 - This might possibly be the best we can do with lora.
-- It did worse on knowledge tasks like "correct word for friend", "synonym for happy", but it did better on cretive tasks (last half of generations).
+
+Comparing run_19 (lora-M) vs run_5 (full-M):
+- Big picture: they perform largeyl the same, with 19 better in some, and 5 better in others. This shows the power of Lora, with only training 7M params, we got
+    equivalent performance.
+- There is no clear pattern in the losses for lora, the losses are confusing suggesting that it is random chance.
+- Examples:
+    - The spelling of the given phrase \"freind\. Lora: Friednship, **Full**: Friend
+    - "He go to the park every day." Lora: He went to the park every day., **Full**: He goes to the park every day.
+    - "Although it was raining, they went for a walk." *Lora*: Although the rain had stopped, they had gone for a walk.. Full: Despite the rain, they went for a walk.
+    - "Suggest an alternate word for 'happy'." Lora: Happy, **Full**: Joyful
+    - "What is the plural form of 'mouse'" **Lora**: mice. Full: mouse
+    - "What is the state capital of California?". **Lora**: Sancramento. Full: San Fransisco
+    - "Name two world renowned artists". **Lora**: Pablo Picasso and Vincent van Gogh. **Full**: Pablo Picasso and Salvador Dal
+    - Both still struggle with open ended questions like: "Generate a plan to increase employee turnover in a company". Sometimes one performs better than the other.
+- By overall judging, equivalent performance. Which is very impressive given lora trained only 7b params.
+
+* **run_20**
+- Looking at the loss curves for run19, and run20, they are eerily similar. Even the train curve pattern is the same.
+
+* **run_21**
+- run_19 performed the best so far. run_12 is equivalent to run_19 but using 1 epoch instead of 2.
+- To test warmup, I'll use run_12 and modify warmup steps. This is as run_12 is only 20 minutes so I can test more values quickly.
+
+- **Unlike run_12, now there is no training loss spike** Which shows that the spike is due to warmup. Similar performance is observed.
+
+* **run_22**
+- Similar overall performance but now there is a small spike that appears at around 5% mark.
+
+Warmup analysis: seems like loss spikes is related to warmup peak. 1% warmup is the best for smooth learning curve.
+    - Looking at the generations manually, they are the same. The differnce in score is due gemini randomness.
+
+* **run_24**
+- I want to see if rank=8 works. I simply inherited from run_19 and changed r and alpha to 8.
+
+- The generations are almost similar. The r=16 model did better on questions like: plural for mouse is mice, and "Although the rain had stopped, they had gone for a walk"
+    - But it is still impressive that a model that is half the size performs almost equivalent.
+
+* **run_25**
+- This was the run where val and train losses were the closest. So probably underfitting as train loss is also high.
+
+* **run_27**
+- There was definetly overfitting happening. Min loss: 1.405, perplex: 4.077 happened at 1 epoch mark. Indicates more capacity than required.
+- There was also the unusual spike in loss at the beginning.
 
 To Try:
 * Learning rate schedulers
@@ -157,12 +237,43 @@ To Try:
 * Epochs (1 vs 2)
 * Lora for all layers vs last layers
 * Lora params: rank and alpha
+* Train L-lora to see capital of California question, and "Name two common sports indigienous to North America".
+
+Learnings so far:
+1) Higher the batch size the better.
+2) Extremely sensitive to learning rate, e.g. increased lr to 1e-4 caused lots of instability.
+3) Higer the rank worse the performance became.
+4) rank = alpha performed the best.
+5) You could stabilize instability of higer rank by plaing with learning schedule (e.g. reducing peak_lr (run 16), or only cosine annealing (run17)).
+    - Learning rate schedule is the biggest lever available for stabilizing.
+6) 
 
 
 Resources:
 * https://magazine.sebastianraschka.com/p/practical-tips-for-finetuning-llms
 
 ## Model Comparisons
+Model Name: gpt2-medium (355M) r=2
+	Total Parameters: 406,286,336
+	Total Memory Requirement: 1549.86 MB
+Total trainable parameters before: 406,286,336
+Total trainable parameters after: 0
+Total trainable LoRA parameters: 987,298
+
+Model Name: gpt2-medium (355M) r=4
+	Total Parameters: 406,286,336
+	Total Memory Requirement: 1549.86 MB
+Total trainable parameters before: 406,286,336
+Total trainable parameters after: 0
+Total trainable LoRA parameters: 1,974,596
+
+* Model Name: gpt2-medium (355M) r=8
+	Total Parameters: 406,286,336
+	Total Memory Requirement: 1549.86 MB
+Total trainable parameters before: 406,286,336
+Total trainable parameters after: 0
+Total trainable LoRA parameters: 3,949,192
+
 * Model Name: gpt2-medium (355M) r=16
 	Total Parameters: 406,286,336
 	Total Memory Requirement: 1549.86 MB
