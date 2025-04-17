@@ -138,11 +138,25 @@ optimizer
 |  run_30  | M-(355M) |    4   |   2    |sgd|0.00005| 1e-5 |  0.2 | 0.1  |  16  |  16 | 1.413 |  4.107  |  15.18     |T4(40.00)| (momentum=0.99)
 |----------|----------|--------|--------|---|-------|------|------|------|------|-----|-------|---------|------------|---------|
 
+lora-L
+|  run_34  | L-(774M) |    2   |   2    |adw|0.00005| 1e-5 |  0.2 | 0.1  |  16  |  16 | 1.462 |  4.315  | 43.72/47.69|T4(47.21)|
+|----------|----------|--------|--------|---|-------|------|------|------|------|-----|-------|---------|------------|---------|
+warmup
+|  run_35  | L-(774M) |    2   |   2    |adw|0.00005| 1e-5 |  0.01| 0.1  |  16  |  16 | 1.489 |  4.432  |   43.34    |T4(47.21)|
+|----------|----------|--------|--------|---|-------|------|------|------|------|-----|-------|---------|------------|---------|
+epoch
+|**run_36**| L-(774M) |    2   |   1    |adw|0.00005| 1e-5 |  0.01| 0.1  |  16  |  16 | 1.408 |  4.090  |   49.98    |T4(47.71)|
+|----------|----------|--------|--------|---|-------|------|------|------|------|-----|-------|---------|------------|---------|
+rank
+|  run_37  | L-(774M) |    2   |   1    |adw|0.00005| 1e-5 |  0.01| 0.1  |  32  |  32 | 1.459 |  4.300  |   44.96    |T4(47.71)|
+|  run_38  | L-(774M) |    2   |   1    |adw|0.00005| 1e-5 |  0.01| 0.1  |  8   |  8  | 1.373 |  3.949  |   46.37    |T4(23.80)|
+
+
 | run_name | model_sz |batch_sz|n_epochs|opt|   lr  |min_lr|warmup| w_dcy| rank |alpha|n_lora_trf|t_params | loss  | perplex | gemini_eval|  time   |
 |----------|----------|--------|--------|---|-------|------|------|------|------|-----|----------|---------|-------|---------|------------|---------|
 |  run_31  | M-(355M) |    4   |   2    |adw|0.00005| 1e-5 |  0.2 | 0.1  |  16  |  16 |    18    |6,128,912| 1.394 | 4.029   |  27.27     |T4(34.13)| 13.1gb
 |  run_32  | M-(355M) |    4   |   2    |adw|0.00005| 1e-5 |  0.2 | 0.1  |  16  |  16 |    20    |6,718,736| 1.378 | 3.967   |  27.02     |T4(34.13)| 13.1gb
-|  run_33  | M-(355M) |    4   |   2    |adw|0.00005| 1e-5 |  0.2 | 0.1  |  16  |  16 |    22    |7,308,560|  |    |       |T4(34.13)| 13.1gb
+|  run_33  | M-(355M) |    4   |   2    |adw|0.00005| 1e-5 |  0.2 | 0.1  |  16  |  16 |    22    |7,308,560| 1.373 | 3.946   |  33.18     |T4(36.79)| 13.1gb
 
 
 * **run_10**
@@ -247,6 +261,17 @@ Warmup analysis: seems like loss spikes is related to warmup peak. 1% warmup is 
 - Inherits from run_19, and simply changes AdamW to SGD.
 - RAM usage with SGD and AdamW both at 14.2Gb
 
+* **run_34**
+- Tried with T4 GPU(15 gb) with batch size 4, and OOM. Repeated the same with L4 GPU (22.5 gb), also OOM.
+- Thus tried again with L4 GPU (batch_size 2).
+
+* **run_35**
+- There was a wierd loss spike in run_34, so I did 1% warmup so majority of schedule is cosine annealing. Now, the loss spike isn't there.
+- There was a lot of overfitting. So, I'll retry with 1 epoch.
+
+* **run_37**
+- Overfitting was happening this indicates that run 36 is the best with rank=16.
+
 To Try:
 * Learning rate schedulers
 * Optimizer type (SGD, AdamW)
@@ -311,9 +336,23 @@ Total trainable parameters before: 406,286,336
 Total trainable parameters after: 0
 Total trainable LoRA parameters: 31,593,536
 
+* Model Name: gpt2-large (774M) r=8
+	Total Parameters: 838,359,040
+	Total Memory Requirement: 3198.09 MB
+Total trainable parameters before: 838,359,040
+Total trainable parameters after: 0
+Total trainable LoRA parameters: 7,047,816
+
 * Model Name: gpt2-large (774M) r=16
 	Total Parameters: 838,359,040
 	Total Memory Requirement: 3198.09 MB
 Total trainable parameters before: 838,359,040
 Total trainable parameters after: 0
 Total trainable LoRA parameters: 14,095,632
+
+* Model Name: gpt2-large (774M) r=32
+	Total Parameters: 838,359,040
+	Total Memory Requirement: 3198.09 MB
+Total trainable parameters before: 838,359,040
+Total trainable parameters after: 0
+Total trainable LoRA parameters: 28,191,264
